@@ -88,8 +88,10 @@ with st.sidebar.expander("🗓️ 月份", expanded=False):
     month_opt = st.multiselect(
         "月份（默认全选）", [f"{i}月" for i in range(1, 13)],
         default=[f"{i}月" for i in range(1, 13)], label_visibility="collapsed")
-settle_opt = st.sidebar.multiselect(
-    "结算类型", ["模拟结算", "正式结算"], default=["模拟结算", "正式结算"])
+with st.sidebar.expander("🔀 结算类型", expanded=False):
+    settle_opt = st.multiselect(
+        "结算类型（默认全选）", ["模拟结算", "正式结算"],
+        default=["模拟结算", "正式结算"], label_visibility="collapsed")
 
 with_year = year_opt == "全部"
 if tab_label == "AGC/二次调频月度补偿":
