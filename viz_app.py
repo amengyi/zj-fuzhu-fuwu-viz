@@ -191,18 +191,23 @@ with tab1:
             z, txt, wcols = [], [], []
             for s in show_stations:
                 zr, tr, wr = [], [], []
+                row_ints = []
                 for m in months:
                     v = piv.at[s, m] if m in piv.columns else None
                     if v is None or pd.isna(v) or v <= 0:
                         zr.append(None); tr.append(""); wr.append(False)
+                        row_ints.append(0)
                     else:
                         b = _bindex(v, STO_BINS)
+                        ri = round(v * 10000)  # 元取整，与单元格显示一致
                         zr.append(b)
-                        tr.append(f"{round(v)}")
+                        tr.append(f"{ri}")
                         wr.append(b >= 4)
-                t = totals.get(s, 0) * 10000  # 元
+                        row_ints.append(ri)
+                # 总收入 = 各月显示值（元取整）之和，随筛选动态变化
+                t = sum(row_ints)
                 b = _bindex(t, TOTAL_BINS)
-                zr.append(b); tr.append(f"{round(t):,}"); wr.append(b >= 3)
+                zr.append(b); tr.append(f"{t:,}"); wr.append(b >= 3)
                 z.append(zr); txt.append(tr); wcols.append(wr)
 
             fig2 = go.Figure(go.Heatmap(
