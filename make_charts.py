@@ -104,11 +104,12 @@ def draw_agc():
     print("saved:", out)
 
 
-# ============ 图2：储能调频补偿收入（全部主体 full outer join） ============
+# ============ 图2：储能调频补偿收入（仅储能类主体，总收入倒序，单位：元取整） ============
 
 
 def draw_storage():
-    stations, matrix = load_storage_all()
+    STORAGE_TYPES = {"储能", "抽蓄", "抽水蓄能", "电化学储能"}
+    stations, matrix = load_storage_all(types=STORAGE_TYPES)
     months = [m for m in ALL_MONTHS if m != "2026-07"]
 
     n_row, n_col = len(stations), len(months)
@@ -126,8 +127,8 @@ def draw_storage():
     ax.text(0.25, height - 0.5, "2025–2026 年浙江储能调频补偿收入",
             fontsize=16, fontweight="bold", color=TITLE_COLOR, ha="left", va="center")
     ax.text(0.25, height - 0.95,
-            "有偿一次调频补偿（全部并网主体）· 单位：万元（保留4位小数） · 灰/空=无数据 · "
-            "2026-07 暂无补偿结算数据",
+            "仅储能类主体 · 有偿一次调频补偿 · 按总收入倒序 · 单位：元（四舍五入取整） · "
+            "空=无数据 · 2026-07 暂无补偿结算数据",
             fontsize=8.5, color="#5b6b80", ha="left", va="center")
 
     y0 = height - 1.6
@@ -138,8 +139,8 @@ def draw_storage():
         ax.text(left + j * cell_w + cell_w / 2, y0 + 0.3, m[2:].replace("-", "/"),
                 ha="center", va="center", fontsize=6.2, color="#555")
 
-    # 万元分箱（元: 0-2 / 2-5 / 5-10 / 10-20 / 20-40 / 40-80 / ≥80）
-    edges = [0, 0.0002, 0.0005, 0.001, 0.002, 0.004, 0.008, 1e9]
+    # 元级分箱：0-2 / 2-5 / 5-10 / 10-20 / 20-40 / 40-80 / ≥80
+    edges = [0, 2, 5, 10, 20, 40, 80, 1e9]
     bins = list(zip(edges[:-1], edges[1:]))
     colors = ["#dce7f5", "#aac8ec", "#6f9fdd", "#3a6fc4", "#e9a86b", "#d97b3f", "#b03a26"]
 
@@ -150,8 +151,8 @@ def draw_storage():
         total = sum(active)
         ax.text(0.25, y, str(i + 1), ha="center", va="center", fontsize=6, color="#888")
         ax.text(0.65, y, s, ha="left", va="center", fontsize=6.5, color="#222")
-        ax.text(left - 0.1, y, f"{len(active)}/{total:.4f}", ha="right", va="center",
-                fontsize=6, color="#555")
+        ax.text(left - 0.1, y, f"{len(active)}/{int(round(total)):,}", ha="right",
+                va="center", fontsize=6, color="#555")
         for j, m in enumerate(months):
             v = vals.get(m)
             if not v:
@@ -160,9 +161,10 @@ def draw_storage():
             c = _shade(v, bins, colors)
             ax.add_patch(Rectangle((x, y - cell_h / 2 + 0.015), cell_w - 0.05, cell_h - 0.03,
                                    facecolor=c, edgecolor="none"))
-            tc = "white" if v >= 0.002 else "#1a2740"
-            ax.text(x + (cell_w - 0.05) / 2, y, f"{v:.4f}".rstrip("0").rstrip(".") or "0",
-                    ha="center", va="center", fontsize=5.5, color=tc)
+            vi = int(round(v))
+            tc = "white" if vi >= 20 else "#1a2740"
+            ax.text(x + (cell_w - 0.05) / 2, y, str(vi),
+                    ha="center", va="center", fontsize=5.8, color=tc)
 
     # 模拟/正式结算分界线
     k = months.index("2025-07")
@@ -174,8 +176,7 @@ def draw_storage():
     # 图例
     ly = 0.3
     lx = 0.3
-    labels = ["0–0.0002", "0.0002–5", "0.0005–0.001", "0.001–0.002",
-              "0.002–0.004", "0.004–0.008", "≥0.008"]
+    labels = ["1–2", "2–5", "5–10", "10–20", "20–40", "40–80", "≥80"]
     for lab, c in zip(labels, colors):
         ax.add_patch(Rectangle((lx, ly - 0.055), 0.26, 0.15, facecolor=c, edgecolor="none"))
         ax.text(lx + 0.32, ly + 0.02, lab, ha="left", va="center", fontsize=6.2, color="#333")

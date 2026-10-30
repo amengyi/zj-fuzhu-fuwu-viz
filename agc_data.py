@@ -93,15 +93,16 @@ def load_storage():
     return stations, matrix
 
 
-def load_storage_all():
-    """全部并网主体（C列）x D列（有偿一次调频补偿），full outer join。
+def load_storage_all(types=None):
+    """并网主体（C列）x D列（有偿一次调频补偿），full outer join。
 
     - 站点名归并'站'后缀别名（'XX储能站' 与 'XX储能' 合并）
+    - types: 按类型列（B列）过滤，如 {'储能','抽蓄'}；None=不过滤
     - 保留任意月份 D>0 的主体（D 恒为 0 的主体无收入意义）
     - 2026-07 为考核文件，无补偿数据，该月整体缺失
     返回 (stations, matrix):
       stations: 按总收入降序的主体列表
-      matrix: {station: {month: 万元或None}}
+      matrix: {station: {month: 元或None}}
     """
     data = defaultdict(dict)
     for f in sorted(glob.glob(os.path.join(STORAGE_DIR, "*.xlsx"))):
@@ -117,6 +118,10 @@ def load_storage_all():
             name = str(r[2]).strip() if r[2] else ""
             if not name or name == "本月汇总" or not r[0]:
                 continue
+            if types is not None:
+                typ = str(r[1]).strip() if r[1] else ""
+                if typ not in types:
+                    continue
             key = name[:-1] if name.endswith("站") else name
             v = r[3]
             if v is None:
@@ -128,7 +133,7 @@ def load_storage_all():
             if v != 0:
                 data[key][month] = data[key].get(month, 0.0) + v
     stations = sorted(data, key=lambda s: (-sum(data[s].values()), s))
-    matrix = {s: {m: (data[s].get(m, 0.0) / 10000.0 or None) for m in ALL_MONTHS}
+    matrix = {s: {m: (data[s].get(m, 0.0) or None) for m in ALL_MONTHS}
               for s in stations}
     return stations, matrix
 
