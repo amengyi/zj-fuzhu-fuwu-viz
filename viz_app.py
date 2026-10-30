@@ -83,18 +83,14 @@ def month_label(m, with_year):
 # ---------- 侧边栏筛选 ----------
 st.sidebar.title("⚙️ 筛选")
 tab_label = st.sidebar.radio("数据视图", ["AGC/二次调频月度补偿", "储能调频补偿收入"])
-with st.sidebar.expander("📅 年份", expanded=False):
-    year_opt = st.multiselect(
-        "年份（默认全选）", ["2025", "2026"],
-        default=["2025", "2026"], label_visibility="collapsed")
-with st.sidebar.expander("🗓️ 月份", expanded=False):
-    month_opt = st.multiselect(
-        "月份（默认全选）", [f"{i}月" for i in range(1, 13)],
-        default=[f"{i}月" for i in range(1, 13)], label_visibility="collapsed")
-with st.sidebar.expander("🔀 结算类型", expanded=False):
-    settle_opt = st.multiselect(
-        "结算类型（默认全选）", ["模拟结算", "正式结算"],
-        default=["模拟结算", "正式结算"], label_visibility="collapsed")
+year_opt = st.sidebar.multiselect(
+    "年份（可多选）", ["2025", "2026"], default=["2025", "2026"])
+month_opt = st.sidebar.multiselect(
+    "月份（可多选）", [f"{i}月" for i in range(1, 13)],
+    default=[f"{i}月" for i in range(1, 13)])
+settle_opt = st.sidebar.multiselect(
+    "结算类型（可多选）", ["模拟结算", "正式结算"],
+    default=["模拟结算", "正式结算"])
 
 with_year = len(year_opt) == 2  # 跨年时横坐标带 25/、26/ 前缀
 if tab_label == "AGC/二次调频月度补偿":
