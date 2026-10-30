@@ -68,7 +68,7 @@ def load_storage():
     data = defaultdict(dict)  # 站名(归并后) -> {month: 万元}
     for f in sorted(glob.glob(os.path.join(STORAGE_DIR, "*.xlsx"))):
         base = os.path.basename(f)
-        if "考核" in base:
+        if "考核" in base or base.startswith("~$"):
             continue  # 考核文件 D 列非补偿费用，跳过
         m = re.search(r"(\d{4})年(\d{1,2})月", base)
         if not m:
@@ -106,7 +106,7 @@ def load_storage_all():
     data = defaultdict(dict)
     for f in sorted(glob.glob(os.path.join(STORAGE_DIR, "*.xlsx"))):
         base = os.path.basename(f)
-        if "考核" in base:
+        if "考核" in base or base.startswith("~$"):
             continue
         m = re.search(r"(\d{4})年(\d{1,2})月", base)
         if not m:
