@@ -125,64 +125,51 @@ with tab1:
         c3.metric("记录数", f"{len(df):,}")
 
         if tab_label == "AGC/二次调频月度补偿":
-            # ===== 图1：复刻《各省AGC/二次调频月度补偿》样式（月份为行） =====
+            # ===== 图1：AGC 横向条形图（月份为行，数值标注加粗增大） =====
             st.markdown("#### 浙江 AGC / 二次调频月度补偿")
             st.caption("单位：万元/月 · 四舍五入至整数 · 蓝色为低值·红色为高值 · "
-                       "按图例分档 · 灰色为缺失")
+                       "按图例分档")
             monthly = df.groupby("月份")["补偿金额（万元）"].sum()
             months = [m for m in ALL_MONTHS if m in monthly.index]
             labels = [month_label(m, with_year) for m in months]
+            vals = [monthly[m] for m in months]
+            bar_colors = [AGC_COLORS[_bindex(v, AGC_BINS)] for v in vals]
 
-            z, texts = [], []
-            for m in months:
-                v = monthly.get(m)
-                if v is None or pd.isna(v):
-                    z.append(9)
-                    texts.append("—")
-                else:
-                    b = _bindex(v, AGC_BINS)
-                    z.append(b)
-                    texts.append(f"{round(v):,}")
+            # 图例置于图上方
+            st.markdown(legend_html(list(zip(AGC_LEGEND, AGC_COLORS + [AGC_MISSING]))),
+                        unsafe_allow_html=True)
 
-            fig = go.Figure(go.Heatmap(
-                z=[z], x=["浙江"], y=labels,
-                zmin=0, zmax=9, colorscale=_colorscale(AGC_COLORS + [AGC_MISSING]),
-                showscale=False, xgap=3, ygap=3, hoverinfo="skip"))
-            # 单元格数值（白字用于深色档）
-            for yi, (lab, t, b) in enumerate(zip(labels, texts, z)):
-                if t == "—":
-                    fc, col = 10, "#98a2b0"
-                else:
-                    fc = 11
-                    col = "white" if b in (0, 6, 7, 8) else TITLE_COLOR
-                fig.add_annotation(x="浙江", y=lab, text=t, showarrow=False,
-                                   font=dict(size=fc, color=col))
-            # 列头
-            fig.add_annotation(x="浙江", yref="paper", y=1.02, xanchor="center",
-                               text=f"<b>浙江<br>{len(months)}个月</b>", showarrow=False,
-                               font=dict(size=14, color=TITLE_COLOR))
-            fig.update_yaxes(autorange="reversed", tickfont=dict(size=11),
-                             showgrid=False)
-            fig.update_xaxes(side="top", showgrid=False)
+            fig = go.Figure(go.Bar(
+                x=vals, y=labels, orientation="h",
+                marker_color=bar_colors,
+                text=[f"<b>{round(v):,}</b>" for v in vals],
+                textposition="outside",
+                textfont=dict(size=16, color=TITLE_COLOR),
+                cliponaxis=False,
+                hovertemplate="%{y}<br>%{x:,.0f} 万元<extra></extra>"))
             # 模拟/正式结算分界线
             if "2025-06" in months and "2025-07" in months:
                 k = months.index("2025-07")
                 fig.add_shape(type="line", xref="paper", x0=0, x1=1,
                               yref="y", y0=k - 0.5, y1=k - 0.5,
                               line=dict(color=TITLE_COLOR, width=2))
-            fig.update_layout(height=90 + len(months) * 34,
-                              margin=dict(l=10, r=10, t=70, b=10))
+            fig.update_yaxes(autorange="reversed", tickfont=dict(size=14),
+                             showgrid=False)
+            fig.update_xaxes(side="top", tickfont=dict(size=13),
+                             title=None, showgrid=True, gridcolor="#eef1f5",
+                             range=[0, max(vals) * 1.18])
+            fig.update_layout(height=max(420, 80 + len(months) * 36),
+                              margin=dict(l=10, r=60, t=40, b=10),
+                              showlegend=False)
             st.plotly_chart(fig, use_container_width=True)
             if "2025-06" in months and "2025-07" in months:
                 st.caption("──────── 分界线：上方为模拟结算，下方为正式结算 ────────")
-            st.markdown(legend_html(list(zip(AGC_LEGEND, AGC_COLORS + [AGC_MISSING]))),
-                        unsafe_allow_html=True)
 
         else:
-            # ===== 图2：复刻《山东储能调频补偿收入》样式（月份为列，总收入倒序） =====
+            # ===== 图2：储能热力图（月份为列，总收入倒序，横坐标/图例在上方） =====
             st.markdown("#### 浙江储能调频补偿收入")
             st.caption("单位：元（取整） · 空白=无数据 · 按所选范围总收入倒序 · "
-                       "2026-07 暂无补偿结算数据 · 虚线右侧说明见分界标注")
+                       "2026-07 暂无补偿结算数据")
             show_stations = stations_all[:topn]
             sub = df[df["并网主体"].isin(show_stations)]
             months = sorted(sub["月份"].unique())
@@ -193,6 +180,12 @@ with tab1:
 
             ylabels = [f"{i + 1}　{s}" for i, s in enumerate(show_stations)]
             xlabels = [month_label(m, with_year) for m in months] + ["总收入"]
+
+            # 图例置于图上方
+            st.markdown(legend_html(list(zip(STO_LEGEND, STO_COLORS)) +
+                                    [("总收入·" + l, c)
+                                     for l, c in zip(TOTAL_LEGEND, TOTAL_COLORS)]),
+                        unsafe_allow_html=True)
 
             colors = STO_COLORS + TOTAL_COLORS
             z, txt, wcols = [], [], []
@@ -221,23 +214,21 @@ with tab1:
                     if not t:
                         continue
                     fig2.add_annotation(
-                        x=xlabels[j], y=ylabels[i], text=t, showarrow=False,
-                        font=dict(size=9, color="white" if w else TITLE_COLOR))
+                        x=xlabels[j], y=ylabels[i], text=f"<b>{t}</b>",
+                        showarrow=False,
+                        font=dict(size=13, color="white" if w else TITLE_COLOR))
             # 模拟/正式结算分界线（2025-06 | 2025-07 之间）
             if "2025-06" in months and "2025-07" in months:
                 k = months.index("2025-07")
                 fig2.add_vline(x=k - 0.5, line_color=TITLE_COLOR, line_width=1.5)
-            fig2.update_yaxes(autorange="reversed", tickfont=dict(size=10),
+            fig2.update_yaxes(autorange="reversed", tickfont=dict(size=12),
                               showgrid=False)
-            fig2.update_layout(height=140 + len(show_stations) * 24,
-                               margin=dict(l=10, r=10, t=30, b=10))
+            fig2.update_xaxes(side="top", tickfont=dict(size=13))
+            fig2.update_layout(height=140 + len(show_stations) * 34,
+                               margin=dict(l=10, r=10, t=40, b=10))
             st.plotly_chart(fig2, use_container_width=True)
             if "2025-06" in months and "2025-07" in months:
                 st.caption("──────── 分界线：左侧为模拟结算，右侧为正式结算 ────────")
-            st.markdown(legend_html(list(zip(STO_LEGEND, STO_COLORS)) +
-                                    [("总收入·" + l, c)
-                                     for l, c in zip(TOTAL_LEGEND, TOTAL_COLORS)]),
-                        unsafe_allow_html=True)
 
 with tab2:
     st.subheader("源数据（AGC 单位：万元；储能单位：万元）")
