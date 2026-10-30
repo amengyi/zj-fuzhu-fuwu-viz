@@ -97,7 +97,6 @@ df = src[src["结算类型"].isin(settle_opt)]
 if not with_year:
     df = df[df["月份"].str.startswith(year_opt)]
 
-topn = len(df["并网主体"].unique())
 if tab_label == "储能调频补偿收入":
     stations_all = sorted(df["并网主体"].unique(),
                           key=lambda s: -df[df["并网主体"] == s]["补偿金额（万元）"].sum())
