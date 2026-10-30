@@ -24,7 +24,7 @@ def get_data():
     for s in stations:
         for m, v in matrix[s].items():
             if v:
-                recs.append({"并网主体": s, "月份": m, "补偿金额（万元）": v})
+                recs.append({"并网主体": s, "月份": m, "补偿金额（元）": v})
     sto_df = pd.DataFrame(recs)
     sto_df["结算类型"] = sto_df["月份"].apply(
         lambda m: "模拟结算" if m <= "2025-06" else "正式结算")
@@ -46,9 +46,9 @@ STO_BINS = [(0, 2), (2, 5), (5, 10), (10, 20), (20, 40), (40, 80), (80, 1e9)]
 STO_COLORS = ["#dce7f5", "#aac8ec", "#6f9fdd", "#3a6fc4", "#e9a86b", "#d97b3f", "#b03a26"]
 STO_LEGEND = ["1–2", "2–5", "5–10", "10–20", "20–40", "40–80", "≥80"]
 # 储能总收入（元）
-TOTAL_BINS = [(0, 500), (500, 2000), (2000, 5000), (5000, 10000), (10000, 1e9)]
+TOTAL_BINS = [(0, 100), (100, 500), (500, 2000), (2000, 5000), (5000, 1e9)]
 TOTAL_COLORS = ["#dce7f5", "#9cc0ee", "#5b8fd9", "#e8834a", "#b03a26"]
-TOTAL_LEGEND = ["<500", "500–2,000", "2,000–5,000", "5,000–10,000", "≥10,000"]
+TOTAL_LEGEND = ["<100", "100–500", "500–2,000", "2,000–5,000", "≥5,000"]
 
 
 def _bindex(v, bins):
@@ -84,6 +84,9 @@ def month_label(m, with_year):
 st.sidebar.title("⚙️ 筛选")
 tab_label = st.sidebar.radio("数据视图", ["AGC/二次调频月度补偿", "储能调频补偿收入"])
 year_opt = st.sidebar.selectbox("年份", ["全部", "2025", "2026"])
+month_opt = st.sidebar.multiselect(
+    "月份", [f"{i}月" for i in range(1, 13)],
+    default=[f"{i}月" for i in range(1, 13)])
 settle_opt = st.sidebar.multiselect(
     "结算类型", ["模拟结算", "正式结算"], default=["模拟结算", "正式结算"])
 
@@ -96,10 +99,14 @@ else:
 df = src[src["结算类型"].isin(settle_opt)]
 if not with_year:
     df = df[df["月份"].str.startswith(year_opt)]
+if month_opt and len(month_opt) < 12:
+    df = df[df["月份"].str[5:7].astype(int).isin(
+        [int(x[:-1]) for x in month_opt])]
 
 if tab_label == "储能调频补偿收入":
+    val_col = "补偿金额（元）"
     stations_all = sorted(df["并网主体"].unique(),
-                          key=lambda s: -df[df["并网主体"] == s]["补偿金额（万元）"].sum())
+                          key=lambda s: -df[df["并网主体"] == s][val_col].sum())
     topn = st.sidebar.slider("按总收入取前 N 个主体", 5, len(stations_all),
                              len(stations_all))
 
@@ -108,10 +115,11 @@ st.sidebar.caption("📌 2025-01 ~ 2025-06 为**模拟结算**；2025-07 ~ 2026-
                    "AGC 单位为**万元**，储能热力图单位为**元**，均四舍五入取整。")
 
 # ---------- 主页面 ----------
-st.title("⚡ 浙江辅助服务补偿数据可视化")
+st.title("⚡ 浙江辅助服务补偿数据")
 st.markdown(
     ":warning: **数据口径说明**：2025-01 ~ 2025-06 为 **模拟结算**，"
-    "2025-07 ~ 2026-09 为 **正式结算**。")
+    "2025-07 ~ 2026-09 为 **正式结算**。数据源对应：**AGC/二次调频月度补偿** → "
+    "*自动发电控制补偿费用*；**储能调频补偿收入** → *有偿一次调频补偿费用*。")
 
 tab1, tab2 = st.tabs(["📈 可视化", "📋 源数据查看/导出"])
 
@@ -119,10 +127,9 @@ with tab1:
     if df.empty:
         st.warning("当前筛选条件下无数据。")
     else:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("合计（万元）", f"{df['补偿金额（万元）'].sum():,.2f}")
-        c2.metric("月均（万元）", f"{df['补偿金额（万元）'].mean():,.2f}")
-        c3.metric("记录数", f"{len(df):,}")
+        unit = "万元" if tab_label.startswith("AGC") else "元"
+        c1, c2 = st.columns(2)
+        c1.metric(f"合计（{unit}）", f"{df['补偿金额（' + unit + '）'].sum():,.0f}")
 
         if tab_label == "AGC/二次调频月度补偿":
             # ===== 图1：AGC 横向条形图（月份为行，数值标注加粗增大） =====
@@ -173,9 +180,8 @@ with tab1:
             show_stations = stations_all[:topn]
             sub = df[df["并网主体"].isin(show_stations)]
             months = sorted(sub["月份"].unique())
-            totals = sub.groupby("并网主体")["补偿金额（万元）"].sum()
             piv = sub.pivot_table(index="并网主体", columns="月份",
-                                  values="补偿金额（万元）", aggfunc="sum")
+                                  values="补偿金额（元）", aggfunc="sum")
             piv = piv.reindex(show_stations)
 
             ylabels = [f"{i + 1}　{s}" for i, s in enumerate(show_stations)]
@@ -199,7 +205,7 @@ with tab1:
                         row_ints.append(0)
                     else:
                         b = _bindex(v, STO_BINS)
-                        ri = round(v * 10000)  # 元取整，与单元格显示一致
+                        ri = round(v)  # 源数据单位即元，直接取整
                         zr.append(b)
                         tr.append(f"{ri}")
                         wr.append(b >= 4)
@@ -236,10 +242,10 @@ with tab1:
                 st.caption("──────── 分界线：左侧为模拟结算，右侧为正式结算 ────────")
 
 with tab2:
-    st.subheader("源数据（AGC 单位：万元；储能单位：万元）")
+    st.subheader("源数据（AGC 单位：万元；储能单位：元）")
     show_df = df.copy()
-    show_df["补偿金额（万元）"] = show_df["补偿金额（万元）"].round(
-        0 if tab_label.startswith("AGC") else 4)
+    show_df[show_df.columns[1]] = show_df[show_df.columns[1]].round(
+        0 if tab_label.startswith("AGC") else 2)
     st.dataframe(show_df, use_container_width=True, height=460)
     st.download_button(
         "⬇️ 导出当前筛选数据 (CSV)",
