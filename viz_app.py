@@ -84,9 +84,10 @@ def month_label(m, with_year):
 st.sidebar.title("⚙️ 筛选")
 tab_label = st.sidebar.radio("数据视图", ["AGC/二次调频月度补偿", "储能调频补偿收入"])
 year_opt = st.sidebar.selectbox("年份", ["全部", "2025", "2026"])
-month_opt = st.sidebar.multiselect(
-    "月份", [f"{i}月" for i in range(1, 13)],
-    default=[f"{i}月" for i in range(1, 13)])
+with st.sidebar.expander("🗓️ 月份", expanded=False):
+    month_opt = st.multiselect(
+        "月份（默认全选）", [f"{i}月" for i in range(1, 13)],
+        default=[f"{i}月" for i in range(1, 13)], label_visibility="collapsed")
 settle_opt = st.sidebar.multiselect(
     "结算类型", ["模拟结算", "正式结算"], default=["模拟结算", "正式结算"])
 
