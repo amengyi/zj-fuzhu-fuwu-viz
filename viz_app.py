@@ -83,7 +83,10 @@ def month_label(m, with_year):
 # ---------- 侧边栏筛选 ----------
 st.sidebar.title("⚙️ 筛选")
 tab_label = st.sidebar.radio("数据视图", ["AGC/二次调频月度补偿", "储能调频补偿收入"])
-year_opt = st.sidebar.selectbox("年份", ["全部", "2025", "2026"])
+with st.sidebar.expander("📅 年份", expanded=False):
+    year_opt = st.multiselect(
+        "年份（默认全选）", ["2025", "2026"],
+        default=["2025", "2026"], label_visibility="collapsed")
 with st.sidebar.expander("🗓️ 月份", expanded=False):
     month_opt = st.multiselect(
         "月份（默认全选）", [f"{i}月" for i in range(1, 13)],
@@ -93,15 +96,15 @@ with st.sidebar.expander("🔀 结算类型", expanded=False):
         "结算类型（默认全选）", ["模拟结算", "正式结算"],
         default=["模拟结算", "正式结算"], label_visibility="collapsed")
 
-with_year = year_opt == "全部"
+with_year = len(year_opt) == 2  # 跨年时横坐标带 25/、26/ 前缀
 if tab_label == "AGC/二次调频月度补偿":
     src = agc_df
 else:
     src = sto_df
 
 df = src[src["结算类型"].isin(settle_opt)]
-if not with_year:
-    df = df[df["月份"].str.startswith(year_opt)]
+if year_opt and len(year_opt) < 2:
+    df = df[df["月份"].str[:4].isin(year_opt)]
 if month_opt and len(month_opt) < 12:
     df = df[df["月份"].str[5:7].astype(int).isin(
         [int(x[:-1]) for x in month_opt])]
