@@ -83,13 +83,51 @@ def month_label(m, with_year):
 # ---------- 侧边栏筛选 ----------
 st.sidebar.title("⚙️ 筛选")
 tab_label = st.sidebar.radio("数据视图", ["AGC/二次调频月度补偿", "储能调频补偿收入"])
-year_opt = st.sidebar.multiselect(
-    "年份（可多选）", ["2025", "2026"], default=["2025", "2026"])
-month_opt = st.sidebar.multiselect(
-    "月份（可多选）", [f"{i}月" for i in range(1, 13)],
-    default=[f"{i}月" for i in range(1, 13)])
-settle_opt = st.sidebar.multiselect(
-    "结算类型（可多选）", ["模拟结算", "正式结算"],
+
+
+def _fmt(sel, all_items):
+    n = len(sel)
+    if n == 0:
+        return "无"
+    if n == len(all_items):
+        return "全部"
+    if n <= 2:
+        return "、".join(sel)
+    return f"{sel[0]} 等{n}项"
+
+
+def option_menu(container, label, options, default):
+    """收起时只显示摘要的多选下拉（基于 st.popover 浮层勾选）。"""
+    state_key = f"_sel_{label}"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = list(default)
+    sel = st.session_state[state_key]
+    sel = [x for x in sel if x in options]
+    with container.popover(label, use_container_width=True):
+        st.caption(f"当前：{_fmt(sel, options)}")
+        picked = st.multiselect(f"{label}（可多选）", options,
+                                default=sel, label_visibility="collapsed")
+        if picked != sel:
+            st.session_state[state_key] = picked
+            st.rerun()
+    # 按钮/摘要行
+    container.markdown(
+        f"""<style>
+        div[data-testid="stPopover"] button {{
+            justify-content: space-between;
+        }}
+        </style>""", unsafe_allow_html=True)
+    return st.session_state[state_key]
+
+
+# 伪多选下拉：收起时只显示摘要（如"全部"），点开浮层勾选，选中项不铺开
+year_opt = option_menu(
+    st.sidebar, "年份", ["2025", "2026"], default=["2025", "2026"])
+month_all = [f"{i}月" for i in range(1, 13)]
+month_opt = option_menu(
+    st.sidebar, "月份", month_all, default=month_all)
+settle_opt = option_menu(
+    st.sidebar, "结算类型", ["模拟结算", "正式结算"],
     default=["模拟结算", "正式结算"])
 
 with_year = len(year_opt) == 2  # 跨年时横坐标带 25/、26/ 前缀
