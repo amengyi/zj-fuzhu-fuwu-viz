@@ -175,8 +175,7 @@ with tab1:
         else:
             # ===== 图2：储能热力图（月份为列，总收入倒序，横坐标/图例在上方） =====
             st.markdown("#### 浙江储能调频补偿收入")
-            st.caption("单位：元（取整） · 空白=无数据 · 按所选范围总收入倒序 · "
-                       "2026-07 暂无补偿结算数据")
+            st.caption("单位：元（取整） · 空白=无数据 · 按所选范围总收入倒序")
             show_stations = stations_all[:topn]
             sub = df[df["并网主体"].isin(show_stations)]
             months = sorted(sub["月份"].unique())

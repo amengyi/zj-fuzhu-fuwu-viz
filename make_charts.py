@@ -110,7 +110,7 @@ def draw_agc():
 def draw_storage():
     STORAGE_TYPES = {"储能", "抽蓄", "抽水蓄能", "电化学储能"}
     stations, matrix = load_storage_all(types=STORAGE_TYPES)
-    months = [m for m in ALL_MONTHS if m != "2026-07"]
+    months = list(ALL_MONTHS)
 
     n_row, n_col = len(stations), len(months)
     cell_w, cell_h = 0.8, 0.26
@@ -128,7 +128,7 @@ def draw_storage():
             fontsize=16, fontweight="bold", color=TITLE_COLOR, ha="left", va="center")
     ax.text(0.25, height - 0.95,
             "仅储能类主体 · 有偿一次调频补偿 · 按总收入倒序 · 单位：元（四舍五入取整） · "
-            "空=无数据 · 2026-07 暂无补偿结算数据",
+            "空=无数据",
             fontsize=8.5, color="#5b6b80", ha="left", va="center")
 
     y0 = height - 1.6
